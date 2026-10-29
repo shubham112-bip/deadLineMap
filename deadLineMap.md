@@ -2,7 +2,7 @@
 
 A cross-layer timeout configuration analyzer: a read-only Python CLI that inspects configuration along a request path (reverse proxy → application server) and reports timeout risks with file-and-line evidence from the source files.
 
-**Team:** `<Name 1>` (Roll No: `<…>`), `<Name 2>` (Roll No: `<…>`)
+**Team:** `Shubham` (Roll No: `44`), `Sumeet` (Roll No: `13`)
 **Repository:** `https://github.com/REPLACE_WITH_USERNAME/deadlinemap`
 
 **Date:** 29-10-2026
