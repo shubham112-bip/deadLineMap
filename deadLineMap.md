@@ -2,7 +2,7 @@
 
 A cross-layer timeout configuration analyzer: a read-only Python CLI that inspects configuration along a request path (reverse proxy → application server) and reports timeout risks with file-and-line evidence from the source files.
 
-**Team:** `Shubham` (Roll No: `44`), `Sumeet` (Roll No: `13`)
+**Team:** `<Name 1>` (Roll No: `<…>`), `<Name 2>` (Roll No: `<…>`)
 **Repository:** `https://github.com/REPLACE_WITH_USERNAME/deadlinemap`
 
 **Date:** 29-10-2026
@@ -230,6 +230,83 @@ The work is mostly reading files, tokenising a limited subset of NGINX configura
 
 ## 5. Architecture
 
+> **Status: tentative.** These diagrams describe the planned v1 design. Module names, rule IDs, and flows may change after Phase 1–4 findings.
+
+### What DeadlineMap analyzes (request-path context)
+
+DeadlineMap does not sit in the request path. It statically reads the configuration of each layer and classifies every timeout by its semantics before comparing anything.
+
+```mermaid
+flowchart LR
+    C["Client"] -->|"HTTP request"| NG["NGINX reverse proxy"]
+    NG -->|"proxy_pass, optional upstream keepalive"| GU["Gunicorn workers"]
+    GU --> APP["Python WSGI app"]
+
+    subgraph NGT["NGINX timeout settings"]
+        T1["proxy_connect_timeout: connect"]
+        T2["proxy_read_timeout: read-interval"]
+        T3["proxy_send_timeout: send-interval"]
+        T4["upstream keepalive_timeout: idle keep-alive"]
+    end
+
+    subgraph GUT["Gunicorn timeout settings"]
+        T5["timeout: worker-silence"]
+        T6["keepalive: idle keep-alive, ignored by sync"]
+        T7["worker_class: sync or gthread"]
+    end
+
+    NG -.- NGT
+    GU -.- GUT
+    DM["deadlinemap scan: static, read-only"] -.->|"reads config files only"| NGT
+    DM -.->|"reads config files only"| GUT
+```
+
+### Component architecture
+
+```mermaid
+flowchart LR
+    subgraph INPUT["Scanned project: read-only"]
+        N1["nginx.conf and static includes"]
+        G1["gunicorn.conf.py"]
+    end
+
+    subgraph TOOL["deadlinemap package"]
+        CLI["cli.py: arguments, thresholds, exit codes"]
+        DISC["discovery.py: locate supported files"]
+        subgraph PARSE["parsers"]
+            PN["nginx.py: tokenizer, block context, line numbers"]
+            PG["gunicorn.py: ast literals, never executes"]
+        end
+        MODEL["model.py: TimeoutSetting records, units, semantic kind"]
+        DEF[("Version-specific documented defaults")]
+        RULES["rules.py: DM001 to DM005"]
+        REP["report.py: text and JSON"]
+    end
+
+    subgraph OUT["Outputs"]
+        TXT["Text report"]
+        JS["JSON report"]
+        EXIT["Exit code 0 to 4"]
+    end
+
+    CLI --> DISC
+    N1 -.->|"read"| DISC
+    G1 -.->|"read"| DISC
+    DISC --> PN
+    DISC --> PG
+    PN --> MODEL
+    PG --> MODEL
+    DEF -.->|"only when target versions are supplied"| MODEL
+    MODEL --> RULES
+    RULES --> REP
+    REP --> TXT
+    REP --> JS
+    RULES -->|"verdicts vs fail-on threshold"| CLI
+    CLI --> EXIT
+```
+
+### CLI execution workflow
+
 ```mermaid
 flowchart TD
     A["User runs deadlinemap scan PATH"] --> B["Parse CLI arguments"]
@@ -263,6 +340,34 @@ flowchart TD
 ### Data flow
 
 The user runs `deadlinemap scan ./project`. Discovery locates supported files and static includes; parsers emit `TimeoutSetting` records (layer, semantic kind, value, source file, line, explicit/unresolved). The model normalises supported units and uses version-specific documented defaults only when the target versions are supplied. The rule engine compares only settings with compatible semantics and sufficient evidence; ambiguous relationships produce `needs-review`. The reporter prints text or JSON. Nothing is written to the scanned repository.
+
+### Rule evaluation workflow
+
+How a pair of settings from the proxy and application layers becomes a verdict. The default bias is towards `needs-review`; `risk` is reserved for rules validated by a reproduced fixture.
+
+```mermaid
+flowchart TD
+    S["Candidate pair of TimeoutSetting records: proxy layer and app layer"] --> V{"Value status?"}
+    V -->|"Unresolved: variable, template, dynamic"| R5["DM005 needs-review: state what could not be resolved"]
+    V -->|"Absent"| D{"Target versions supplied and default documented?"}
+    D -->|"Yes"| R4I["DM004 info: show documented default and its source"]
+    D -->|"No"| R4R["DM004 needs-review: value unknown, no guessing"]
+    V -->|"Explicit"| K{"Semantic kinds comparable?"}
+    K -->|"No, e.g. connect vs worker-silence"| SKIP["Not compared: no finding"]
+    K -->|"Yes"| P{"Rule preconditions hold? e.g. worker_class, upstream keepalive enabled"}
+    P -->|"No"| NA["Rule not applicable: recorded as non-finding"]
+    P -->|"Yes"| C{"Rule condition met?"}
+    C -->|"No"| OK["No finding"]
+    C -->|"Yes"| VAL{"Validated by a reproduced fixture?"}
+    VAL -->|"Not yet"| NR["needs-review finding with assumptions"]
+    VAL -->|"Yes"| RK["risk finding"]
+
+    R5 --> OUTF["Finding cites file, line, rule, rationale, assumptions"]
+    R4I --> OUTF
+    R4R --> OUTF
+    NR --> OUTF
+    RK --> OUTF
+```
 
 ### Critical engineering detail
 
@@ -369,6 +474,23 @@ deadlinemap scan fixtures/keepalive-mismatch
 ---
 
 ## 7. Development plan (8 gated phases)
+
+```mermaid
+flowchart TD
+    P1["01 Validate problem and run competitor trials"] --> G1{"Reproducible gap the closest tools miss?"}
+    G1 -->|"No"| X["Refine scope or reject DeadlineMap"]
+    X -.-> P1
+    G1 -->|"Yes"| P2["02 Define MVP, rules, acceptance tests"]
+    P2 --> P3["03 Build benchmark: findings and non-findings"]
+    P3 --> P4["04 Architecture and CLI design"]
+    P4 --> P5["05 Minimum working CLI"]
+    P5 --> P6["06 Test correctness and false positives"]
+    P6 --> G6{"Meets Phase 2 thresholds?"}
+    G6 -->|"No"| RV["Revise rules and fixtures"]
+    RV --> P6
+    G6 -->|"Yes"| P7["07 Evaluate on a real repository"]
+    P7 --> P8["08 Documentation and submission"]
+```
 
 | # | Phase | Deliverable | Gate |
 |---|---|---|---|
