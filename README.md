@@ -41,7 +41,7 @@ deadlinemap ./path/to/project
 deadlinemap ./path/to/project/nginx.conf
 ~~~
 
-The default output is intentionally brief: it tells you whether anything needs review, explains each item in plain language, shows the most relevant file and line, and gives you a suggested next step.
+The default output is intentionally brief: it tells you whether anything needs review, explains each item in plain language, shows the most relevant file and line, and gives you a suggested next step. If one configuration layer is missing and cross-layer checks are skipped, the report labels the result as a partial scan.
 
 For the full technical report, use:
 
