@@ -1,66 +1,75 @@
 """Conservative parser for a practical subset of NGINX configuration."""
 from __future__ import annotations
+
 import glob
 from dataclasses import dataclass
 from pathlib import Path
+
 from deadlinemap.model import NginxDirective, ParseIssue
+
 
 @dataclass(frozen=True)
 class Token:
     value: str
     line: int
 
+
 def tokenize(text: str) -> list[Token]:
     out: list[Token] = []
     i = 0
     line = 1
+
     while i < len(text):
-        c = text[i]
-        if c in " \t\r":
+        char = text[i]
+        if char in (" ", "\t", "\r"):
             i += 1
             continue
-        if c == "\n":
+        if char == "\n":
             line += 1
             i += 1
             continue
-        if c == "#":
+        if char == "#":
             while i < len(text) and text[i] != "\n":
                 i += 1
             continue
-        if c in "{};":
-            out.append(Token(c, line))
+        if char in ("{", "}", ";"):
+            out.append(Token(char, line))
             i += 1
             continue
-        if c in ("'", '"'):
-            q, start = c, line
+        if char in ("'", '"'):
+            quote, start_line = char, line
             i += 1
-            value = []
+            value: list[str] = []
             while i < len(text):
-                c = text[i]
-                if c == "\\" and i + 1 < len(text):
+                current = text[i]
+                if current == "\\" and i + 1 < len(text):
                     if text[i + 1] == "\n":
                         line += 1
                     value.append(text[i + 1])
                     i += 2
                     continue
-                if c == q:
+                if current == quote:
                     i += 1
                     break
-                if c == "\n":
+                if current == "\n":
                     line += 1
-                value.append(c)
+                value.append(current)
                 i += 1
             else:
-                raise ValueError(f"unterminated quoted string on line {start}")
-            out.append(Token("".join(value), start))
+                raise ValueError(f"unterminated quoted string on line {start_line}")
+            out.append(Token("".join(value), start_line))
             continue
+
         start_i, start_line = i, line
-        while i < len(text) and text[i] not in " \t\r\n{};#'\\"":
+        delimiters = (" ", "\t", "\r", "\n", "{", "}", ";", "#", "'", '"')
+        while i < len(text) and text[i] not in delimiters:
             i += 1
         if i == start_i:
             i += 1
         out.append(Token(text[start_i:i], start_line))
+
     return out
+
 
 class NginxParser:
     def __init__(self, root: Path):
@@ -93,30 +102,37 @@ class NginxParser:
         if key in self.parsed:
             return
         self.parsed.add(key)
+
         try:
             text = path.read_text(encoding="utf-8")
             tokens = tokenize(text)
         except (OSError, UnicodeError, ValueError) as exc:
-            self.issues.append(ParseIssue("DM005", "Could not parse NGINX file", path, 1, str(exc)))
+            self.issues.append(
+                ParseIssue("DM005", "Could not parse NGINX file", path, 1, str(exc))
+            )
             return
+
         self.active.add(path)
         try:
             self._block(tokens, 0, path, context, False)
         except ValueError as exc:
-            self.issues.append(ParseIssue("DM005", "Malformed NGINX syntax", path, 1, str(exc)))
+            self.issues.append(
+                ParseIssue("DM005", "Malformed NGINX syntax", path, 1, str(exc))
+            )
         finally:
             self.active.remove(path)
 
     def _block(self, tokens, index, source, context, close):
         while index < len(tokens):
-            tok = tokens[index]
-            if tok.value == "}":
+            token = tokens[index]
+            if token.value == "}":
                 if not close:
-                    raise ValueError(f"unexpected }} on line {tok.line}")
+                    raise ValueError(f"unexpected }} on line {token.line}")
                 return index + 1
-            if tok.value in {"{", ";"}:
-                raise ValueError(f"unexpected {tok.value!r} on line {tok.line}")
-            name, line = tok.value, tok.line
+            if token.value in {"{", ";"}:
+                raise ValueError(f"unexpected {token.value!r} on line {token.line}")
+
+            name, line = token.value, token.line
             index += 1
             args = []
             while index < len(tokens) and tokens[index].value not in {";", "{", "}"}:
@@ -124,36 +140,54 @@ class NginxParser:
                 index += 1
             if index >= len(tokens) or tokens[index].value == "}":
                 raise ValueError(f"directive {name!r} on line {line} is missing a terminator")
+
             delimiter = tokens[index].value
             if delimiter == "{":
                 label = name + ((" " + " ".join(args)) if args else "")
-                index = self._block(tokens, index + 1, source, context + (label,), True)
+                index = self._block(
+                    tokens, index + 1, source, context + (label,), True
+                )
             else:
                 if name == "include":
                     self._include(args, source, context, line)
                 else:
-                    self.directives.append(NginxDirective(name, tuple(args), context, source, line))
+                    self.directives.append(
+                        NginxDirective(name, tuple(args), context, source, line)
+                    )
                 index += 1
+
         if close:
             raise ValueError("unclosed block")
         return index
 
     def _include(self, args, source, context, line):
         if len(args) != 1 or "$" in args[0]:
-            self.issues.append(ParseIssue("DM005", "Dynamic or unsupported include", source, line, "Only one static path is followed."))
+            self.issues.append(
+                ParseIssue(
+                    "DM005", "Dynamic or unsupported include", source, line,
+                    "Only one static path is followed.",
+                )
+            )
             return
+
         target = Path(args[0])
         if not target.is_absolute():
             target = source.parent / target
-        matches = sorted(Path(p).resolve() for p in glob.glob(str(target)))
+        matches = sorted(Path(item).resolve() for item in glob.glob(str(target)))
         if not matches:
-            self.issues.append(ParseIssue("DM005", "Include matched no files", source, line, args[0]))
+            self.issues.append(
+                ParseIssue("DM005", "Include matched no files", source, line, args[0])
+            )
             return
+
         for path in matches:
             if self._inside(path):
                 self._file(path, context)
             else:
-                self.issues.append(ParseIssue("DM005", "Include escapes scan root", source, line, str(path)))
+                self.issues.append(
+                    ParseIssue("DM005", "Include escapes scan root", source, line, str(path))
+                )
+
 
 def parse_nginx(path: Path, root: Path):
     return NginxParser(root).parse(path)
