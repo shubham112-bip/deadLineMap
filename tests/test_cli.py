@@ -6,30 +6,45 @@ from deadlinemap.cli import main
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
-def test_text_scan(capsys):
+def test_text_scan_is_plain_language(capsys):
     code = main(["scan", str(FIXTURES / "keepalive-mismatch")])
     output = capsys.readouterr().out
     assert code == 0
-    assert "DM001" in output
-    assert "nginx.conf:" in output
-    assert "What needs attention" in output
-    assert "Parsed timeout and keep-alive settings" not in output
+    assert "keep-alive times may not match" in output
+    assert "NGINX:" in output
+    assert "Gunicorn:" in output
+    assert "Problem:" in output
+    assert "What to do:" in output
+    assert "DM001" not in output
+    assert "needs-review" not in output
+    assert "Technical evidence:" not in output
 
 
 def test_short_command_scan(capsys):
     code = main([str(FIXTURES / "worker-first")])
     output = capsys.readouterr().out
     assert code == 0
-    assert "DM002" in output
-    assert "REVIEW RECOMMENDED" in output
+    assert "Gunicorn may stop the worker first" in output
+    assert "DM002" not in output
+    assert "What to do:" in output
 
 
-def test_details_show_settings_and_evidence(capsys):
+def test_dynamic_setting_explained_simply(capsys):
+    code = main(["scan", str(FIXTURES / "dynamic-value")])
+    output = capsys.readouterr().out
+    assert code == 0
+    assert "cannot be checked" in output
+    assert "DM005" not in output
+    assert "Problem:" in output
+
+
+def test_details_show_rule_ids_and_evidence(capsys):
     code = main(["scan", str(FIXTURES / "keepalive-mismatch"), "--details"])
     output = capsys.readouterr().out
     assert code == 0
-    assert "Parsed timeout and keep-alive settings" in output
-    assert "Evidence:" in output
+    assert "DM001" in output
+    assert "Technical evidence:" in output
+    assert "Settings read by DeadlineMap" in output
 
 
 def test_json_scan(capsys):
@@ -55,8 +70,8 @@ def test_empty_project_returns_four(capsys, tmp_path):
     code = main(["scan", str(tmp_path)])
     assert code == 4
     output = capsys.readouterr().out
-    assert "No supported config files" in output
-    assert "No supported configuration" in output
+    assert "No supported config files were found." in output
+    assert "nginx.conf and gunicorn.conf.py" in output
 
 
 def test_dm003_runtime_scenario_is_detected(capsys):
