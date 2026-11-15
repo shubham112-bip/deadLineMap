@@ -51,15 +51,15 @@ result="$(curl --silent --show-error --output /dev/null \
 status="${result%% *}"
 elapsed="${result#* }"
 
-if [[ "$status" != "502" ]]; then
-  echo "Expected NGINX HTTP 502 after Gunicorn's worker timeout; got: $result" >&2
+if [[ "$status" != "500" ]]; then
+  echo "Expected NGINX HTTP 500 after Gunicorn's worker timeout; got: $result" >&2
   compose logs --no-color >&2 || true
   exit 1
 fi
 
 app_logs="$(compose logs --no-color app)"
 if ! printf '%s\n' "$app_logs" | grep -q "WORKER TIMEOUT"; then
-  echo "NGINX returned 502, but Gunicorn's WORKER TIMEOUT log was not found." >&2
+  echo "NGINX returned 500, but Gunicorn's WORKER TIMEOUT log was not found." >&2
   printf '%s\n' "$app_logs" >&2
   exit 1
 fi

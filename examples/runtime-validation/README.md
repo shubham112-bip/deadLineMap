@@ -11,7 +11,7 @@ This isolated Docker Compose example checks one real runtime behavior behind **D
 | NGINX | `proxy_read_timeout` | 10 seconds |
 | Test endpoint | response delay | 6 seconds |
 
-The request takes longer than Gunicorn's configured worker-silence timeout but less than NGINX's configured upstream read interval. The expected outcome for this pinned scenario is that Gunicorn terminates the silent sync worker and NGINX returns **HTTP 502** because the upstream closes before sending response headers.
+The request takes longer than Gunicorn's configured worker-silence timeout but less than NGINX's configured upstream read interval. In the live run with this pinned scenario, the request returned **HTTP 500** and Gunicorn logged `WORKER TIMEOUT`. This is the observed behavior of this exact setup; it is not a universal status-code prediction.
 
 This is one controlled reproduction, not proof that every timeout mismatch causes the same status code. NGINX's `proxy_read_timeout` is an interval between upstream reads, not a whole-response deadline. Gunicorn's timeout behavior depends on its worker implementation.
 
@@ -33,4 +33,4 @@ To use a different local port:
 DEADLINEMAP_PORT=28080 bash examples/runtime-validation/verify.sh
 ```
 
-The scanner should report **DM002** as `needs-review`. The runtime script then checks for both an NGINX **502** response and Gunicorn's `WORKER TIMEOUT` log entry. If the observed result differs, retain the container logs; do not change the rule based on a single unexplained result.
+The scanner should report **DM002** as `needs-review`. The runtime script then checks for both an HTTP **500** response and Gunicorn's `WORKER TIMEOUT` log entry. If the observed result differs, retain the container logs; do not change the rule based on a single unexplained result.

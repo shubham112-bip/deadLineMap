@@ -55,7 +55,7 @@ deadlinemap scan examples/runtime-validation --format json
 bash examples/runtime-validation/verify.sh
 ```
 
-See [the runtime validation guide](examples/runtime-validation/README.md) for the deliberately mismatched settings, expected observations, and Docker requirements. This is a controlled reproduction, not a general claim that all timeout mismatches produce HTTP 502.
+See [the runtime validation guide](examples/runtime-validation/README.md) for the deliberately mismatched settings, observed behavior, and Docker requirements. In this specific run, the request returned HTTP 500 while Gunicorn logged a worker timeout; the status code is runtime-specific.
 
 ## Exit codes
 
