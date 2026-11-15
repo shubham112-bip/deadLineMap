@@ -75,10 +75,10 @@ By default, `--fail-on risk` is used. The current MVP emits heuristic findings a
 
 ## Supported input and limitations
 
-- NGINX: files named `nginx.conf`, nested blocks, quoted values, comments, and static includes whose resolved paths remain inside the scanned project root.
+- NGINX: files named `nginx.conf`, nested blocks, quoted values, comments, static includes whose resolved paths remain inside the scanned project root, and parent-to-child inheritance for selected proxy directives (`proxy_read_timeout`, `proxy_http_version`, and `proxy_set_header`).
 - Gunicorn: files named `gunicorn.conf.py` with literal module-level assignments for `worker_class`, `timeout`, and `keepalive`.
 - Includes are resolved relative to the including file by this MVP; this is not a complete emulation of NGINX's runtime prefix resolution.
-- Dynamic variables, templates, Lua, environment-dependent Python expressions, Gunicorn CLI/Procfile/Docker parsing, all NGINX inheritance rules, and multiple ambiguous topologies are not fully supported.
+- Dynamic variables, templates, Lua, environment-dependent Python expressions, Gunicorn CLI/Procfile/Docker parsing, complete NGINX inheritance semantics, and all ambiguous topologies are not fully supported. Duplicate effective scalar directives are treated as unresolved instead of guessed.
 - The scanner does not infer version-specific defaults.
 - Findings are static review hints, not runtime diagnoses or guaranteed HTTP status predictions.
 

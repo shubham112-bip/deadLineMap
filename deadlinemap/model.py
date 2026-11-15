@@ -11,6 +11,8 @@ class NginxDirective:
     context: tuple[str, ...]
     source: Path
     line: int
+    # Internal structural identity distinguishes sibling blocks with the same label.
+    scope: tuple[str, ...] = ()
 
 @dataclass(frozen=True)
 class ParseIssue:

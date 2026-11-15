@@ -78,9 +78,13 @@ class NginxParser:
         self.issues: list[ParseIssue] = []
         self.active: set[Path] = set()
         self.parsed: set[tuple[Path, tuple[str, ...]]] = set()
+        self._next_scope_id = 0
 
     def parse(self, path: Path):
-        self._file(path.resolve(), ())
+        resolved = path.resolve()
+        # Prefix every scope with its entry-point path so multiple nginx.conf
+        # trees scanned together cannot accidentally inherit from each other.
+        self._file(resolved, (), (str(resolved),))
         return self.directives, self.issues
 
     def _inside(self, path: Path) -> bool:
@@ -90,12 +94,12 @@ class NginxParser:
         except ValueError:
             return False
 
-    def _file(self, path: Path, context: tuple[str, ...]):
+    def _file(self, path: Path, context: tuple[str, ...], scope: tuple[str, ...]):
         path = path.resolve()
         if not self._inside(path):
             self.issues.append(ParseIssue("DM005", "Include is outside scan root", path, 1))
             return
-        key = (path, context)
+        key = (path, scope)
         if path in self.active:
             self.issues.append(ParseIssue("DM005", "Cyclic include detected", path, 1))
             return
@@ -114,7 +118,7 @@ class NginxParser:
 
         self.active.add(path)
         try:
-            self._block(tokens, 0, path, context, False)
+            self._block(tokens, 0, path, context, scope, False)
         except ValueError as exc:
             self.issues.append(
                 ParseIssue("DM005", "Malformed NGINX syntax", path, 1, str(exc))
@@ -122,7 +126,7 @@ class NginxParser:
         finally:
             self.active.remove(path)
 
-    def _block(self, tokens, index, source, context, close):
+    def _block(self, tokens, index, source, context, scope, close):
         while index < len(tokens):
             token = tokens[index]
             if token.value == "}":
@@ -144,15 +148,18 @@ class NginxParser:
             delimiter = tokens[index].value
             if delimiter == "{":
                 label = name + ((" " + " ".join(args)) if args else "")
+                block_id = str(self._next_scope_id)
+                self._next_scope_id += 1
                 index = self._block(
-                    tokens, index + 1, source, context + (label,), True
+                    tokens, index + 1, source, context + (label,),
+                    scope + (block_id,), True
                 )
             else:
                 if name == "include":
-                    self._include(args, source, context, line)
+                    self._include(args, source, context, scope, line)
                 else:
                     self.directives.append(
-                        NginxDirective(name, tuple(args), context, source, line)
+                        NginxDirective(name, tuple(args), context, source, line, scope)
                     )
                 index += 1
 
@@ -160,7 +167,7 @@ class NginxParser:
             raise ValueError("unclosed block")
         return index
 
-    def _include(self, args, source, context, line):
+    def _include(self, args, source, context, scope, line):
         if len(args) != 1 or "$" in args[0]:
             self.issues.append(
                 ParseIssue(
@@ -182,7 +189,7 @@ class NginxParser:
 
         for path in matches:
             if self._inside(path):
-                self._file(path, context)
+                self._file(path, context, scope)
             else:
                 self.issues.append(
                     ParseIssue("DM005", "Include escapes scan root", source, line, str(path))
