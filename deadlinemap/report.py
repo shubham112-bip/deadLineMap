@@ -117,7 +117,7 @@ def _simple_finding(finding, root: Path) -> tuple[str, str, list[str], str]:
     locations = [location] if location else []
 
     if " is dynamic" in title and "gunicorn" in title:
-        match = re.search(r"Gunicorn setting '([^']+)' is dynamic", finding.title, re.IGNORECASE)
+        match = re.search(r"Gunicorn setting ['\\"]([^'\\"]+)", finding.title, re.IGNORECASE)
         setting = match.group(1) if match else "setting"
         explanation = (
             f"The {setting} value is calculated by Python code or an environment "

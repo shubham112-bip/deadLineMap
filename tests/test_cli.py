@@ -45,7 +45,9 @@ def test_dynamic_gunicorn_value_is_explained_in_plain_language(capsys, tmp_path)
         encoding="utf-8",
     )
     (tmp_path / "gunicorn.conf.py").write_text(
-        'worker_class = "gthread"\\ntimeout = get_timeout_from_environment()\\n',
+        '''worker_class = "gthread"
+timeout = get_timeout_from_environment()
+''',
         encoding="utf-8",
     )
     code = main(["scan", str(tmp_path)])
