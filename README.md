@@ -41,7 +41,24 @@ deadlinemap ./path/to/project
 deadlinemap ./path/to/project/nginx.conf
 ~~~
 
-The default output is intentionally brief: it tells you whether anything needs review, explains each item in plain language, shows the most relevant file and line, and gives you a suggested next step. If one configuration layer is missing and cross-layer checks are skipped, the report labels the result as a partial scan.
+The default output is deliberately simple: it shows what may be wrong, the exact file and line, and what to check next. It hides internal rule IDs and technical evidence. Use `--details` only when you need the full technical report. DeadlineMap checks supported NGINX and Gunicorn timeout settings; it is not a general-purpose application-code bug finder.
+
+Example:
+
+~~~text
+DeadlineMap
+Project: analysis-input
+Checked: 1 NGINX config file, 1 Gunicorn config file
+
+1 item needs a closer look
+
+1. Gunicorn timeout value cannot be checked
+   File: gunicorn.conf.py:37
+   Problem: The timeout value is calculated by Python code or an environment variable. DeadlineMap does not run that code, so it cannot know the value used by the running application.
+   What to do: Check the final value in the environment where the application runs.
+
+DeadlineMap checks NGINX and Gunicorn timeout settings; it does not find general bugs in application code.
+~~~
 
 For the full technical report, use:
 
