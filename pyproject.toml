@@ -5,35 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "deadlinemap"
 version = "0.1.0"
-description = "Find potentially risky timeout relationships in NGINX and Gunicorn configurations."
-readme = { file = "README.md", content-type = "text/markdown" }
+description = "Read-only cross-layer timeout configuration analyzer for NGINX and Gunicorn"
+readme = "README.md"
 requires-python = ">=3.11"
-authors = [
-  { name = "Shubham Shah" },
-]
-keywords = [
-  "nginx",
-  "gunicorn",
-  "timeout",
-  "configuration",
-  "static-analysis",
-  "deployment",
-  "cli",
-]
-classifiers = [
-  "Development Status :: 3 - Alpha",
-  "Environment :: Console",
-  "Intended Audience :: Developers",
-  "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
-  "Programming Language :: Python :: 3.14",
-  "Topic :: Software Development :: Quality Assurance",
-  "Topic :: System :: Systems Administration",
-]
 dependencies = []
 
 [project.optional-dependencies]
@@ -41,11 +15,6 @@ dev = ["pytest>=8.0"]
 
 [project.scripts]
 deadlinemap = "deadlinemap.cli:main"
-
-[project.urls]
-Homepage = "https://github.com/shubham112-bip/deadLineMap"
-Repository = "https://github.com/shubham112-bip/deadLineMap"
-"Issue Tracker" = "https://github.com/shubham112-bip/deadLineMap/issues"
 
 [tool.setuptools.packages.find]
 include = ["deadlinemap*"]

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 from pathlib import Path
 
@@ -116,7 +117,8 @@ def _simple_finding(finding, root: Path) -> tuple[str, str, list[str], str]:
     locations = [location] if location else []
 
     if " is dynamic" in title and "gunicorn" in title:
-        setting = first.get("key", "setting")
+        match = re.search(r"Gunicorn setting ['\\"]([^'\\"]+)", finding.title, re.IGNORECASE)
+        setting = match.group(1) if match else "setting"
         explanation = (
             f"The {setting} value is calculated by Python code or an environment "
             "variable. DeadlineMap does not run that code, so it cannot know the "
@@ -200,7 +202,8 @@ def render_text(result: ScanResult, details: bool = False) -> str:
             "DeadlineMap looks for nginx.conf and gunicorn.conf.py.",
         ])
     elif findings:
-        lines.append(f"{len(findings)} item{'s' if len(findings) != 1 else ''} need a closer look")
+        count_word = "item needs" if len(findings) == 1 else "items need"
+        lines.append(f"{len(findings)} {count_word} a closer look")
         lines.append("")
         for index, finding in enumerate(findings, start=1):
             title, explanation, locations, action = _simple_finding(finding, result.root)

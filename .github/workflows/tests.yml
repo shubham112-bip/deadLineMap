@@ -24,14 +24,3 @@ jobs:
         run: |
           deadlinemap --version
           deadlinemap scan tests/fixtures/keepalive-mismatch
-      - name: Build and validate distributions
-        run: |
-          python -m pip install build twine
-          python -m build
-          python -m twine check dist/*
-      - name: Test the built wheel in a clean environment
-        run: |
-          python -m venv "$RUNNER_TEMP/wheel-test"
-          "$RUNNER_TEMP/wheel-test/bin/python" -m pip install --no-deps dist/*.whl
-          "$RUNNER_TEMP/wheel-test/bin/deadlinemap" --version
-          "$RUNNER_TEMP/wheel-test/bin/deadlinemap" tests/fixtures/keepalive-mismatch

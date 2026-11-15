@@ -38,6 +38,24 @@ def test_dynamic_setting_explained_simply(capsys):
     assert "Problem:" in output
 
 
+def test_dynamic_gunicorn_value_is_explained_in_plain_language(capsys, tmp_path):
+    (tmp_path / "nginx.conf").write_text(
+        "http { server { location / { proxy_pass http://app; "
+        "proxy_read_timeout 15s; } } }",
+        encoding="utf-8",
+    )
+    (tmp_path / "gunicorn.conf.py").write_text(
+        'worker_class = "gthread"\\ntimeout = get_timeout_from_environment()\\n',
+        encoding="utf-8",
+    )
+    code = main(["scan", str(tmp_path)])
+    output = capsys.readouterr().out
+    assert code == 0
+    assert "Gunicorn timeout value cannot be checked" in output
+    assert "File: gunicorn.conf.py:2" in output
+    assert "DM005" not in output
+
+
 def test_details_show_rule_ids_and_evidence(capsys):
     code = main(["scan", str(FIXTURES / "keepalive-mismatch"), "--details"])
     output = capsys.readouterr().out
