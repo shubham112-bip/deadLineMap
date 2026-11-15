@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deadlinemap"
+version = "0.1.0"
+description = "Read-only cross-layer timeout configuration analyzer for NGINX and Gunicorn"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+deadlinemap = "deadlinemap.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["deadlinemap*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
