@@ -73,7 +73,9 @@ def test_dm001_reports_complete_gthread_configuration(tmp_path):
         "upstream.keepalive_timeout",
         "upstream.keepalive",
         "gunicorn.keepalive",
+        "proxy_http_version",
         "proxy_pass",
+        "proxy_set_header Connection",
     }
     assert any(item.key == "gunicorn.keepalive" for item in settings)
 

@@ -44,7 +44,7 @@ http {
     )
 
     assert not issues
-    finding = next(item for item in findings if item.rule_id == "DM003")
+    finding = next(item for item in findings if item.rule_id == "DM002")
     assert finding.evidence[0]["value"] == "30s"
     assert finding.evidence[-1]["value"] == "http://backend"
 
@@ -68,7 +68,7 @@ http {
     )
 
     assert not issues
-    finding = next(item for item in findings if item.rule_id == "DM002")
+    finding = next(item for item in findings if item.rule_id == "DM003")
     assert finding.evidence[0]["value"] == "2s"
 
 
@@ -97,7 +97,7 @@ http {
     by_rule = {item.rule_id: item for item in findings if item.rule_id in {"DM002", "DM003"}}
     assert set(by_rule) == {"DM002", "DM003"}
     assert by_rule["DM003"].evidence[-1]["value"] == "http://backend"
-    assert by_rule["DM002"].evidence[0]["value"] == "2s"
+    assert by_rule["DM002"].evidence[0]["value"] == "30s"
 
 
 def test_same_named_sibling_server_blocks_do_not_leak_overrides(tmp_path):
@@ -128,7 +128,7 @@ http {
         item.rule_id: item.evidence[0]["value"]
         for item in findings if item.rule_id in {"DM002", "DM003"}
     }
-    assert values == {"DM003": "30s", "DM002": "2s"}
+    assert values == {"DM002": "30s", "DM003": "2s"}
 
 
 def test_duplicate_timeout_at_same_scope_is_not_guessed(tmp_path):
