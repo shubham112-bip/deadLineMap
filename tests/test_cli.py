@@ -31,3 +31,14 @@ def test_empty_project_returns_four(capsys, tmp_path):
     code = main(["scan", str(tmp_path)])
     assert code == 4
     assert "No supported configuration" in capsys.readouterr().out
+
+ 
+def test_dm003_runtime_scenario_is_detected(capsys):
+    scenario = Path(__file__).parents[1] / "examples" / "runtime-validation-dm003"
+    code = main(["scan", str(scenario), "--format", "json"])
+    payload = json.loads(capsys.readouterr().out)
+    assert code == 0
+    assert any(
+        item["rule_id"] == "DM003" and item["verdict"] == "needs-review"
+        for item in payload["findings"]
+    )

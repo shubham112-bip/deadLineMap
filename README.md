@@ -48,14 +48,16 @@ deadlinemap scan tests/fixtures/proxy-first --format json
 
 ## Reproduce a live timeout
 
-A small Docker-based NGINX + Gunicorn scenario exercises the DM002 worker-timeout-first case against real containers:
+Docker-based NGINX + Gunicorn scenarios exercise both DM002 (worker timeout first) and DM003 (proxy read interval first) against real containers:
 
 ```bash
 deadlinemap scan examples/runtime-validation --format json
 bash examples/runtime-validation/verify.sh
+deadlinemap scan examples/runtime-validation-dm003 --format json
+bash examples/runtime-validation-dm003/verify.sh
 ```
 
-See [the runtime validation guide](examples/runtime-validation/README.md) for the deliberately mismatched settings, observed behavior, and Docker requirements. In this specific run, the request returned HTTP 500 while Gunicorn logged a worker timeout; the status code is runtime-specific.
+See [the DM002 runtime validation guide](examples/runtime-validation/README.md) and [the DM003 runtime validation guide](examples/runtime-validation-dm003/README.md) for both controlled scenarios and their Docker requirements. In the DM002 run, the request returned HTTP 500 while Gunicorn logged a worker timeout; DM003 separately checks the proxy-first case.
 
 ## Exit codes
 

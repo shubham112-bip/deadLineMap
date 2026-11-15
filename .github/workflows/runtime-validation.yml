@@ -30,5 +30,19 @@ jobs:
           assert any(item["rule_id"] == "DM002" for item in findings), findings
           print("PASS: static scan reported DM002")
           PY
-      - name: Reproduce the timeout with real NGINX and Gunicorn containers
+      - name: Confirm the static scanner reports DM003
+        run: |
+          deadlinemap scan examples/runtime-validation-dm003 --format json --fail-on never > /tmp/deadlinemap-dm003-report.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("/tmp/deadlinemap-dm003-report.json").read_text())
+          findings = report["findings"]
+          assert any(item["rule_id"] == "DM003" for item in findings), findings
+          print("PASS: static scan reported DM003")
+          PY
+      - name: Reproduce DM002 with real NGINX and Gunicorn containers
         run: bash examples/runtime-validation/verify.sh
+      - name: Reproduce DM003 with real NGINX and Gunicorn containers
+        run: bash examples/runtime-validation-dm003/verify.sh
