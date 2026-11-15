@@ -6,7 +6,7 @@
 
 ## What it checks
 
-- **DM001 — upstream idle keep-alive:** a review finding when an explicitly configured NGINX upstream idle-cache timeout exceeds Gunicorn's configured keepalive, but only when an upstream cache and explicit compatible proxy route are found and the worker is `gthread` or `gevent`.
+- **DM001 — upstream idle keep-alive:** a review finding when an explicitly configured NGINX upstream idle-cache timeout exceeds Gunicorn's configured keepalive, but only when an upstream cache and explicit compatible proxy route are found and the worker is `gthread` or `gevent`. This is a stale-connection risk heuristic; NGINX may reconnect cleanly.
 - **DM002 — worker timeout first:** a review finding for an explicit Gunicorn `sync` worker when its worker-silence timeout is shorter than the single unambiguous NGINX `proxy_read_timeout`.
 - **DM003 — proxy read interval first:** the inverse ordering for an explicit Gunicorn `sync` worker.
 - **DM005 — unresolved configuration:** variables, unsupported values, malformed syntax, unsafe/out-of-root includes, and other constructs the scanner refuses to guess about.
@@ -48,16 +48,18 @@ deadlinemap scan tests/fixtures/proxy-first --format json
 
 ## Reproduce a live timeout
 
-Docker-based NGINX + Gunicorn scenarios exercise both DM002 (worker timeout first) and DM003 (proxy read interval first) against real containers:
+Docker-based NGINX + Gunicorn scenarios exercise DM001 (upstream idle keep-alive), DM002 (worker timeout first), and DM003 (proxy read interval first) against real containers:
 
 ```bash
+deadlinemap scan examples/runtime-validation-dm001 --format json
+bash examples/runtime-validation-dm001/verify.sh
 deadlinemap scan examples/runtime-validation --format json
 bash examples/runtime-validation/verify.sh
 deadlinemap scan examples/runtime-validation-dm003 --format json
 bash examples/runtime-validation-dm003/verify.sh
 ```
 
-See [the DM002 runtime validation guide](examples/runtime-validation/README.md) and [the DM003 runtime validation guide](examples/runtime-validation-dm003/README.md) for both controlled scenarios and their Docker requirements. In the DM002 run, the request returned HTTP 500 while Gunicorn logged a worker timeout; DM003 separately checks the proxy-first case.
+See the [DM001](examples/runtime-validation-dm001/README.md), [DM002](examples/runtime-validation/README.md), and [DM003](examples/runtime-validation-dm003/README.md) runtime guides for the controlled scenarios and Docker requirements. DM001 checks upstream connection reuse/rotation, DM002 observed HTTP 500 with a Gunicorn worker timeout, and DM003 checks the proxy-first case.
 
 ## Exit codes
 

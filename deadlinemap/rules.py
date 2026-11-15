@@ -58,7 +58,22 @@ def analyze(directives: list[NginxDirective], gunicorn: dict, gunicorn_path: Pat
     if isinstance(worker, str):
         worker = worker.rsplit(".", 1)[-1]
 
-    if backend_keep is not None and isinstance(backend_keep, (int, float)):
+    keepalive_is_numeric = (
+        isinstance(backend_keep, (int, float)) and not isinstance(backend_keep, bool)
+    )
+    keepalive_is_valid = (
+        keepalive_is_numeric
+        and backend_keep >= 0
+        and float(backend_keep).is_integer()
+    )
+    if backend_keep is not None and not keepalive_is_valid:
+        findings.append(Finding(
+            "DM005", "needs-review", "Unsupported Gunicorn keep-alive value",
+            f"Gunicorn keepalive must be a non-negative integer; found {backend_keep!r}.",
+            [_ev("gunicorn.keepalive", str(backend_keep), gunicorn_path, backend_keep_line)],
+            ["The analyzer does not coerce or execute Gunicorn configuration values."],
+        ))
+    elif keepalive_is_valid:
         settings.append(TimeoutSetting("gunicorn.keepalive", str(backend_keep), float(backend_keep),
                                        "idle-keepalive", gunicorn_path, backend_keep_line))
     if backend_timeout is not None and isinstance(backend_timeout, (int, float)):
@@ -67,7 +82,7 @@ def analyze(directives: list[NginxDirective], gunicorn: dict, gunicorn_path: Pat
 
     # DM001: conservative conditions. No check for sync workers, implicit proxy
     # defaults, or routes that do not explicitly opt in to upstream keepalive.
-    if worker in {"gthread", "gevent"} and isinstance(backend_keep, (int, float)):
+    if worker in {"gthread", "gevent"} and keepalive_is_valid and float(backend_keep) > 0:
         upstreams = {}
         for d in directives:
             upstream = _ctx(d.context, "upstream")

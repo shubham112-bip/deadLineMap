@@ -18,6 +18,18 @@ jobs:
           python-version: "3.11"
       - name: Install DeadlineMap
         run: python -m pip install -e .
+      - name: Confirm the static scanner reports DM001
+        run: |
+          deadlinemap scan examples/runtime-validation-dm001 --format json --fail-on never > /tmp/deadlinemap-dm001-report.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("/tmp/deadlinemap-dm001-report.json").read_text())
+          findings = report["findings"]
+          assert any(item["rule_id"] == "DM001" for item in findings), findings
+          print("PASS: static scan reported DM001")
+          PY
       - name: Confirm the static scanner reports DM002
         run: |
           deadlinemap scan examples/runtime-validation --format json --fail-on never > /tmp/deadlinemap-report.json
@@ -42,6 +54,8 @@ jobs:
           assert any(item["rule_id"] == "DM003" for item in findings), findings
           print("PASS: static scan reported DM003")
           PY
+      - name: Reproduce DM001 with real NGINX and Gunicorn containers
+        run: bash examples/runtime-validation-dm001/verify.sh
       - name: Reproduce DM002 with real NGINX and Gunicorn containers
         run: bash examples/runtime-validation/verify.sh
       - name: Reproduce DM003 with real NGINX and Gunicorn containers

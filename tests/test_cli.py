@@ -42,3 +42,14 @@ def test_dm003_runtime_scenario_is_detected(capsys):
         item["rule_id"] == "DM003" and item["verdict"] == "needs-review"
         for item in payload["findings"]
     )
+
+ 
+def test_dm001_runtime_scenario_is_detected(capsys):
+    scenario = Path(__file__).parents[1] / "examples" / "runtime-validation-dm001"
+    code = main(["scan", str(scenario), "--format", "json"])
+    payload = json.loads(capsys.readouterr().out)
+    assert code == 0
+    assert any(
+        item["rule_id"] == "DM001" and item["verdict"] == "needs-review"
+        for item in payload["findings"]
+    )
