@@ -46,6 +46,17 @@ deadlinemap scan tests/fixtures/worker-first
 deadlinemap scan tests/fixtures/proxy-first --format json
 ```
 
+## Reproduce a live timeout
+
+A small Docker-based NGINX + Gunicorn scenario exercises the DM002 worker-timeout-first case against real containers:
+
+```bash
+deadlinemap scan examples/runtime-validation --format json
+bash examples/runtime-validation/verify.sh
+```
+
+See [the runtime validation guide](examples/runtime-validation/README.md) for the deliberately mismatched settings, expected observations, and Docker requirements. This is a controlled reproduction, not a general claim that all timeout mismatches produce HTTP 502.
+
 ## Exit codes
 
 | Code | Meaning |
