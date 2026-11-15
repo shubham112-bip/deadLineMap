@@ -47,11 +47,18 @@ def _plain_explanation(finding) -> str:
 
     title = finding.title.lower()
     message = finding.message
-    if "dynamic" in title or "unresolved" in title or "unsupported" in title:
+    if "dynamic" in title:
         return (
-            f"{message} DeadlineMap does not execute configuration code or substitute "
-            "runtime variables, so it cannot safely determine the final value."
+            "This value is calculated at runtime. DeadlineMap does not run Gunicorn's "
+            "configuration code, so it cannot safely determine the final value."
         )
+    if "unresolved" in title:
+        return (
+            "This setting contains a variable or expression DeadlineMap cannot resolve. "
+            "Confirm the value used by the running deployment."
+        )
+    if "unsupported" in title:
+        return f"{message} The value format is not supported, so it was left unresolved rather than guessed."
     if "ambiguous" in title or "duplicate" in message.lower():
         return f"{message} DeadlineMap did not guess which setting would take effect."
     if "worker class is not explicit" in title:
@@ -91,6 +98,8 @@ def render_text(result: ScanResult, details: bool = False) -> str:
         status = "POTENTIAL RISK FOUND"
     elif counts.get("needs-review", 0):
         status = "REVIEW RECOMMENDED"
+    elif any("cross-layer checks were skipped" in note for note in result.notes):
+        status = "PARTIAL SCAN"
     else:
         status = "NO SUPPORTED CONFLICTS FOUND"
 
